@@ -1,0 +1,57 @@
+{
+  "name": "object",
+  "version": "0.0.1",
+  "description": "The code snippet provides utility functions for manipulating and transforming JavaScript objects, including getting and setting values by path, converting objects to form data, cloning objects, updating objects, and deleting attributes by path.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "start": "node dist/index.js",
+    "dev": "npm run build; concurrently \"npx tsc -w\" \"npm run start\"",
+    "jTest": "jest --watchAll --verbose --coverage",
+    "test": "vitest --coverage",
+    "lint": "tsc"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.26.2",
+    "@types/jest": "^29.5.2",
+    "@types/lodash": "^4.14.195",
+    "@types/node": "^18.15.10",
+    "@vitest/coverage-v8": "^0.32.4",
+    "codecov": "^3.8.3",
+    "concurrently": "^8.2.0",
+    "jsdom": "^22.1.0",
+    "tsup": "^7.1.0",
+    "typescript": "^5.1.5",
+    "vitest": "^0.32.4"
+  },
+  "author": "souf11yane",
+  "license": "MIT",
+  "homepage": "https://github.com/souf11yane/object#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/souf11yane/object.git"
+  },
+  "bugs": {
+    "url": "https://github.com/souf11yane/object/issues"
+  },
+  "keywords": [
+    "object",
+    "objects",
+    "helper",
+    "helpers",
+    "sf",
+    "sf-helper",
+    "sf-helpers",
+    "@sf",
+    "@sf-helper",
+    "@sf-helpers"
+  ],
+  "dependencies": {
+    "lodash": "^4.17.21"
+  }
+}
