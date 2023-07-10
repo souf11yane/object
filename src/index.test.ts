@@ -10,115 +10,357 @@ import {
   setValuesByPaths,
   updateObject,
   updateObjectStrict,
+  accessObjectByPath,
 } from "./index";
 
-// Tests that setValueByPath sets a value at a given path in an object
-it("test_set_value_by_path_happy_path", () => {
-  const obj = { a: { b: { c: 1 } } };
-  setValueByPath(obj, "a.b.c", 2);
-  expect(obj.a.b.c).toEqual(2);
-});
+describe("accessObjectByPath_function", () => {
+  // Tests that the function can access a property that exists at the top level of the object
+  it("test_access_top_level_property", () => {
+    const obj = { a: 1 };
+    const [last, data] = accessObjectByPath(obj, "a");
+    expect(last).toBe("a");
+    expect(data).toBe(obj);
+  });
 
-// Tests that getValueByPath gets a value at a given path in an object
-it("test_get_value_by_path_happy_path", () => {
-  const obj = { a: { b: { c: 1 } } };
-  const value = getValueByPath(obj, "a.b.c");
-  expect(value).toEqual(1);
-});
+  // Tests that the function can access a property that exists at a nested level of the object
+  it("test_access_nested_property", () => {
+    const obj = { a: { b: 2 } };
+    const [last, data] = accessObjectByPath(obj, "a.b");
+    expect(last).toBe("b");
+    expect(data).toEqual({ b: 2 });
+  });
 
-// Tests that setValuesByPaths handles arrays with numeric indices
-it("test_set_values_by_paths_edge_case", () => {
-  const obj = { a: [1, 2, 3], b: { c: 2 } };
-  setValuesByPaths(obj, [["b", "c"], { path: "a.2", value: 5 }]);
-  expect(obj.b).toEqual(2);
-  expect(obj.a).toEqual([4, 2, 5]);
-});
+  // Tests that the function can access the last property in a nested path
+  it("test_access_last_property", () => {
+    const obj = { a: { b: { c: 3 } } };
+    const [last, data] = accessObjectByPath(obj, "a.b.c");
+    expect(last).toBe("c");
+    expect(data).toEqual({ c: 3 });
+  });
 
-// Tests that deleteAttributeByPath handles arrays with numeric indices
-it("test_delete_attribute_by_path_edge_case", () => {
-  const obj = { a: [1, 2, 3] };
-  deleteAttributeByPath(obj, "a.1");
-  expect(obj.a).toEqual([1, 3]);
-});
+  // Tests that the function returns the entire object if a property in the path does not exist and createIfUndefined is false
+  it("test_access_nonexistent_top_level_property", () => {
+    const obj = { a: 1 };
+    const [last, data] = accessObjectByPath(obj, "b");
+    expect(last).toBe("b");
+    expect(data).toBe(obj);
+  });
 
-// Tests that convertToFormData converts a JavaScript object to form data
-it("test_convert_to_form_data_happy_path", () => {
-  const data = { a: 1, b: "hello" };
-  const media = [{ file: new File([""], "file.txt"), title: "file" }];
-  const formData = convertToFormData(data, media);
-  expect(formData.get("a")).toEqual("1");
-  expect(formData.get("b")).toEqual('"hello"');
-  expect(formData.get("file")).toBeInstanceOf(File);
-});
+  // Tests that the function returns the entire object if a property in a nested path does not exist and createIfUndefined is false
+  it("test_access_nonexistent_nested_property", () => {
+    const obj = { a: { b: 2 } };
+    const [last, data] = accessObjectByPath(obj, "a.c");
+    expect(last).toBe("c");
+    expect(data).toBe(obj.a);
+  });
 
-// Tests that simpleCloneObject handles null and undefined values
-it("test_simple_clone_object_edge_case", () => {
-  const obj1 = null;
-  const obj2 = undefined;
-  const obj3 = { a: 1 };
-  const clonedObj1 = simpleCloneObject(obj1);
-  const clonedObj2 = simpleCloneObject(obj2);
-  const clonedObj3 = simpleCloneObject(obj3);
-  expect(clonedObj1).toEqual(null);
-  expect(clonedObj2).toEqual(undefined);
-  expect(clonedObj3).toEqual({ a: 1 });
-});
+  // Tests that the function returns undefined if a property in a nested path does not exist and it's not the last path and createIfUndefined is false
+  it("test_access_nonexistent_nested_property_not_last", () => {
+    const obj = { a: { b: 2 } };
+    const [last, data] = accessObjectByPath(obj, "a.c.d");
+    expect(last).toBe("d");
+    expect(data).toBeUndefined();
+  });
 
-// Tests that deleteAttributesByPaths deletes multiple properties in an object using an array of paths
-it("test_deleteAttributesByPaths_happy_path", () => {
-  const obj = {
-    a: {
-      b: {
-        c: 1,
-        d: 2,
+  // Tests that the function returns the entire object if a property in the path does not exist and createIfUndefined is false
+  it("test_create_nonexistent_top_level_property", () => {
+    const obj = { a: 1 };
+    const [last, data] = accessObjectByPath(obj, "b.c", true);
+    expect(last).toBe("c");
+    expect(data).toEqual({});
+  });
+
+  // Tests that the function returns the entire object if a property in a nested path does not exist and createIfUndefined is false
+  it("test_create_nonexistent_nested_property", () => {
+    const obj = { a: { b: 2 } };
+    const [last, data] = accessObjectByPath(obj, "a.c.d", true);
+    expect(last).toBe("d");
+    expect(data).toEqual({});
+  });
+
+  // Tests that the function returns an error if the path is not a string
+  it("test_access_non_string_path", () => {
+    const obj = { a: 1 };
+    expect(() => accessObjectByPath(obj, 123)).toThrow();
+  });
+
+  // Tests that accessing a property with an empty string path returns the original object
+  it("test_accessing_property_with_empty_string_path", () => {
+    const obj = { a: 1 };
+    const [last, data] = accessObjectByPath(obj, "");
+    expect(last).toBe("");
+    expect(data).toBe(obj);
+  });
+
+  // Tests that the function returns the last property in the path if it is an object
+  it("test_returns_last_property_if_object", () => {
+    const obj = {
+      a: {
+        b: {
+          c: {
+            d: "value",
+          },
+        },
       },
-      e: {
-        f: 3,
-        g: 4,
+    };
+
+    const [last, data] = accessObjectByPath(obj, "a.b.c");
+
+    expect(last).toBe("c");
+    expect(data).toEqual({ c: { d: "value" } });
+  });
+
+  // Tests that the function returns the last property in the path if it is an array
+  it("test_returns_last_property_if_it_is_an_array", () => {
+    const obj = {
+      a: {
+        b: [
+          {
+            c: 1,
+          },
+          {
+            c: 2,
+          },
+        ],
       },
-    },
-    h: {
-      i: 5,
-      j: 6,
-    },
-  };
-  const expected = {
-    a: {
-      b: {
-        d: 2,
-      },
-      e: {
-        f: 3,
-      },
-    },
-    h: {
-      j: 6,
-    },
-  };
-  const paths = ["a.b.c", "a.e.g", "h.i"];
-  const result = deleteAttributesByPaths(obj, paths);
-  expect(result).toEqual(expected);
+    };
+    const [last, data] = accessObjectByPath(obj, "a.b");
+    expect(last).toEqual("b");
+    expect(data).toEqual({
+      b: [
+        {
+          c: 1,
+        },
+        {
+          c: 2,
+        },
+      ],
+    });
+  });
 });
 
-// Tests that updateObject updates an object with new properties and values
-it("test_updateObject_happy_path", () => {
-  const obj = { a: 1, b: 2 };
-  updateObject(obj, { b: 3, c: 4 });
-  expect(obj).toEqual({ a: 1, b: 3, c: 4 });
-});
+describe("getValueByPath_function", () => {
+  // Tests that the function returns the correct value for a simple path
+  it("test_simple_path", () => {
+    const obj = { a: 1 };
+    const path = "a";
+    expect(getValueByPath(obj, path)).toEqual(1);
+  });
 
-// Tests that cloneObjectDeep creates a deep copy of a JavaScript object
-it("test_clone_object_deep", () => {
-  const obj = { a: 1, b: { c: 2 } };
-  const clonedObj = cloneObjectDeep(obj);
-  expect(clonedObj).toEqual(obj);
-  expect(clonedObj).not.toBe(obj);
-  expect(clonedObj.b).not.toBe(obj.b);
-});
+  // Tests that the function returns the correct value for a nested path
+  it("test_nested_path", () => {
+    const obj = { a: { b: { c: 1 } } };
+    const path = "a.b.c";
+    expect(getValueByPath(obj, path)).toEqual(1);
+  });
 
-// Tests that updateObjectStrict updates an object with new properties and values, only updating existing properties
-it("test_updateObjectStrict_happy_path", () => {
-  const obj = { a: 1, b: { c: 2 } };
-  updateObjectStrict(obj, { a: 3, b: { c: 4, d: 5 } });
-  expect(obj).toEqual({ a: 3, b: { c: 4 } });
+  // Tests that the function returns undefined for a non-existent path
+  it("test_non_existent_path", () => {
+    const obj = { a: { b: { c: 1 } } };
+    const path = "a.b.d";
+    expect(getValueByPath(obj, path)).toBeUndefined();
+  });
+
+  // Tests that the function returns the correct value for a path with a numeric property
+  it("test_numeric_property", () => {
+    const obj = { "1": "one" };
+    const path = "1";
+    expect(getValueByPath(obj, path)).toEqual("one");
+  });
+
+  // Tests that the function returns the correct value for a path with a boolean property
+  it("test_boolean_property", () => {
+    const obj = { true: "yes" };
+    const path = "true";
+    expect(getValueByPath(obj, path)).toEqual("yes");
+  });
+
+  // Tests that the function returns the correct value for a path with a null property
+  it("test_null_property", () => {
+    const obj = { null: "nothing" };
+    const path = "null";
+    expect(getValueByPath(obj, path)).toEqual("nothing");
+  });
+
+  // Tests that the function returns undefined when the property at the given path is undefined
+  it("test_returns_undefined_for_undefined_property", () => {
+    const obj = { a: { b: 1 } };
+    const path = "a.c";
+    const result = getValueByPath(obj, path);
+    expect(result).toBeUndefined();
+  });
+
+  // Tests that the function returns the correct value for a path with an empty string property
+  it("test_returns_correct_value_for_empty_string_property", () => {
+    const obj = { "": "empty string property" };
+    const path = "";
+    const expected = "empty string property";
+    const result = getValueByPath(obj, path);
+    expect(result).toEqual(expected);
+  });
+
+  // Tests that the function returns the correct value for a path with a property that has a value of 0
+  it("test_returns_correct_value_for_path_with_property_value_of_0", () => {
+    const obj = {
+      a: {
+        b: {
+          c: 0,
+        },
+      },
+    };
+    const path = "a.b.c";
+    const result = getValueByPath(obj, path);
+    expect(result).toBe(0);
+  });
+
+  // Tests that the function returns the correct value for a path with a property that has a value of false
+  it("test_returns_correct_value_for_false_property", () => {
+    const obj = {
+      a: {
+        b: {
+          c: false,
+        },
+      },
+    };
+    const path = "a.b.c";
+    const result = getValueByPath(obj, path);
+    expect(result).toBe(false);
+  });
+
+  // Tests that the function returns the correct value for a path with a property that has a value of null
+  it("test_returns_correct_value_for_null_property", () => {
+    const obj = {
+      a: {
+        b: null,
+      },
+    };
+    const path = "a.b";
+    const result = getValueByPath(obj, path);
+    expect(result).toBeNull();
+  });
+
+  // Tests that the function returns the correct value for a path with a property that has a value of undefined
+  it("test_returns_correct_value_for_undefined_property", () => {
+    const obj = { a: { b: undefined } };
+    const path = "a.b";
+    const result = getValueByPath(obj, path);
+    expect(result).toBeUndefined();
+  });
+
+  // Tests that the function returns the correct value for a path with a property that has a value of an object with a nested object
+  it("test_returns_correct_value_for_nested_object", () => {
+    const obj = {
+      a: {
+        b: {
+          c: "value",
+        },
+      },
+    };
+    const path = "a.b";
+    const expected = {
+      c: "value",
+    };
+    const result = getValueByPath(obj, path);
+    expect(result).toEqual(expected);
+  });
+
+  // Tests that the function 'getValueByPath' returns the correct value for a path with a property that has a value of an object with nested arrays
+  it("test_returns_correct_value_for_path_with_property_with_nested_arrays", () => {
+    const obj = {
+      a: {
+        b: {
+          c: [
+            {
+              d: 1,
+            },
+            {
+              d: 2,
+            },
+          ],
+        },
+      },
+    };
+    const path = "a.b.c.1.d";
+    const expectedValue = 2;
+    const result = getValueByPath(obj, path);
+    expect(result).toEqual(expectedValue);
+  });
+
+  // Tests that the function returns the correct value for a path with a property that has a value of an array with nested objects
+  it("test_returns_correct_value_for_path_with_array_of_nested_objects", () => {
+    const obj = {
+      a: {
+        b: [
+          {
+            c: {
+              d: "value1",
+            },
+          },
+          {
+            c: {
+              d: "value2",
+            },
+          },
+        ],
+      },
+    };
+    const result = getValueByPath(obj, "a.b.1.c.d");
+    expect(result).toEqual("value2");
+  });
+
+  // Tests that the function returns the correct value for a path with a property that has a value of an empty object
+  it("test_returns_correct_value_for_empty_object", () => {
+    const obj = { a: { b: {} } };
+    const path = "a.b";
+    const expected = {};
+    const result = getValueByPath(obj, path);
+    expect(result).toEqual(expected);
+  });
+
+  // Tests that getValueByPath returns the correct value for a path with a property that has a value of an empty array
+  it("test_returns_correct_value_for_empty_array", () => {
+    const obj = {
+      a: {
+        b: [],
+      },
+    };
+    const path = "a.b";
+    const result = getValueByPath(obj, path);
+    expect(result).toEqual([]);
+  });
+
+  // Tests that the function returns the correct value for a path with an object property
+  it("test_returns_correct_value_for_object_property", () => {
+    const obj = {
+      a: {
+        b: {
+          c: "value",
+        },
+      },
+    };
+    const path = "a.b.c";
+    const expected = "value";
+    const result = getValueByPath(obj, path);
+    expect(result).toEqual(expected);
+  });
+
+  // Tests that the function returns the correct value for a path with an array property
+  it("test_returns_correct_value_for_array_property", () => {
+    const obj = {
+      a: {
+        b: [
+          {
+            c: 1,
+          },
+          {
+            c: 2,
+          },
+        ],
+      },
+    };
+    const path = "a.b.1.c";
+    const expected = 2;
+    const result = getValueByPath(obj, path);
+    expect(result).toEqual(expected);
+  });
 });

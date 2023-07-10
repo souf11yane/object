@@ -1,25 +1,40 @@
 import cloneDeep from "lodash/cloneDeep";
 
-function accessObjectByPath(obj: any, path: string, createIfUndefined = false) {
-  let accessObjectByPathRec = (obj: any, path: string) => {
-    if (obj && typeof obj == "object" && path) {
-      let [first, ...rest] = path.split(".");
+/**
+ *
+ * @description
+ * - The function uses recursion to traverse the object and handle nested properties
+ * - It can create properties if they do not exist, but this behavior is optional and controlled by the createIfUndefined parameter
+ * @param obj any JavaScript object
+ * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
+ * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
+ * @returns An array containing the last path segment and the accessed property
+ */
+export function accessObjectByPath(
+  obj: any,
+  path: string,
+  createIfUndefined = false
+): [string, any] {
+  let pathSegments = path.split(".");
+  let last = pathSegments.splice(-1, 1)[0] ?? "";
 
-      if (!obj.hasOwnProperty(first) && createIfUndefined) {
-        obj[first] = isNaN(+first) ? {} : [];
-      }
+  let data = obj;
 
-      if (rest.length) {
-        return accessObjectByPathRec(obj, rest.join("."));
+  while (pathSegments.length) {
+    const prop = pathSegments.shift()!;
+
+    if (!(prop in data)) {
+      if (createIfUndefined) {
+        data[prop] = isNaN(+prop) ? {} : [];
       } else {
-        return obj[first];
+        return [last, undefined];
       }
-    } else {
-      return obj;
     }
-  };
 
-  return accessObjectByPathRec(obj, path);
+    data = data[prop];
+  }
+
+  return [last, data];
 }
 
 /**
@@ -27,35 +42,17 @@ function accessObjectByPath(obj: any, path: string, createIfUndefined = false) {
  * @description traverses the object using dot notation to get the value of a property at a given path
  * @param obj any JavaScript object
  * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
+ * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
  * @returns the value of the property at the given path
  */
-export function getValueByPath(obj: any, path: string): any {
-  // if (!obj) return obj;
+export function getValueByPath(
+  obj: any,
+  path: string,
+  createIfUndefined = false
+): any {
+  let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
 
-  // let [first, ...rest] = path.split(".");
-
-  // if (rest.length) {
-  //   if (Array.isArray(obj[first]) && isNaN(+rest[0])) {
-  //     return obj[first].map((d: any) => getValueByPath(d, rest.join(".")));
-  //   } else {
-  //     return getValueByPath(obj[first], rest.join("."));
-  //   }
-  // } else {
-  //   return obj[first];
-  // }
-
-  let pathSegments = path.split(".");
-  let last = pathSegments.splice(-1, 1)[0];
-
-  let data = accessObjectByPath(obj, pathSegments.join("."));
-
-  console.log("🚀 ~ file: index.ts:51 ~ getValueByPath ~ data:", data);
-
-  if (data[last]) {
-    return data[last];
-  } else {
-    return data;
-  }
+  return data[last];
 }
 
 /**
