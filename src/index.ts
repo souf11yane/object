@@ -15,6 +15,10 @@ export function accessObjectByPath(
   path: string,
   createIfUndefined = false
 ): [string, any] {
+  if (typeof path !== "string") {
+    throw new Error(`the given path \`${path}\` is not of type string`);
+  }
+
   let pathSegments = path.split(".");
   let last = pathSegments.splice(-1, 1)[0] ?? "";
 
@@ -23,9 +27,9 @@ export function accessObjectByPath(
   while (pathSegments.length) {
     const prop = pathSegments.shift()!;
 
-    if (!(prop in data)) {
+    if (!(prop in data) || !data[prop]) {
       if (createIfUndefined) {
-        data[prop] = isNaN(+prop) ? {} : [];
+        data[prop] = isNaN(+pathSegments[0]) ? {} : [];
       } else {
         return [last, undefined];
       }
@@ -50,9 +54,17 @@ export function getValueByPath(
   path: string,
   createIfUndefined = false
 ): any {
-  let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
+  try {
+    let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
 
-  return data[last];
+    return data[last];
+  } catch (error) {
+    console.error(
+      `there was an error while getting the value of the path \`${path}\` \ndetail: `,
+      error
+    );
+    return obj;
+  }
 }
 
 /**
@@ -60,93 +72,103 @@ export function getValueByPath(
  * @description traverses the object using dot notation to set the value of a property at a given path, creating nested objects or arrays as needed
  * @param obj any JavaScript object
  * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
+ * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
  * @returns the updated object with the new property value
  */
-export function setValueByPath<T = any>(
+export function setValueByPath<T extends {}>(
   obj: T,
   path: string,
-  value: { path: string; obj: any }
+  value: { path: string; obj: any },
+  createIfUndefined: boolean
 ): T;
-export function setValueByPath<T = any>(
+export function setValueByPath<T extends {}>(
   obj: T,
   path: string,
-  value: { path: string }
+  value: { path: string },
+  createIfUndefined?: boolean
 ): T;
-export function setValueByPath<T = any>(obj: T, path: string, value: any): T;
-export function setValueByPath<T = any>(obj: any, path: string, value: any): T {
-  if (obj && typeof obj == "object" && path) {
-    let [first, ...rest] = path.split(".");
+export function setValueByPath<T extends {}>(
+  obj: T,
+  path: string,
+  value: any,
+  createIfUndefined?: boolean
+): T;
+export function setValueByPath<T extends {}>(
+  obj: T,
+  path: string,
+  value: any,
+  createIfUndefined = false
+): T {
+  try {
+    let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
 
-    if (rest.length) {
-      if (!obj.hasOwnProperty(first)) {
-        obj[first] = isNaN(+rest[0]) ? {} : [];
-        setValueByPath(obj, rest.join("."), value as any);
-      } else {
-        if (Array.isArray(obj[first]) && isNaN(+rest[0])) {
-          obj[first].forEach((val: any) =>
-            setValueByPath(val, rest.join("."), value as any)
+    if (data && (last in data || createIfUndefined)) {
+      let objKeysLength = Object.keys(value || {}).length;
+
+      if (objKeysLength > 0 && objKeysLength <= 2) {
+        if (!("path" in value)) {
+          data[last] = value;
+        } else {
+          let returnedData = getValueByPath(
+            value.obj || data[last],
+            value.path
           );
-        } else {
-          setValueByPath(obj[first], rest.join("."), value as any);
+          if (returnedData) data[last] = returnedData;
         }
-      }
-    } else {
-      if (Array.isArray(obj[first])) {
-        obj[first] = obj[first].map((d: any) => {
-          if (value?.value !== undefined) {
-            return value?.value;
-          }
-
-          return getValueByPath(value?.obj || d, value?.path || "");
-        });
       } else {
-        if (value?.value != undefined) {
-          obj[first] = value?.value;
-        } else {
-          obj[first] =
-            getValueByPath(value?.obj || obj[first], value?.path || "") ??
-            obj[first];
-        }
+        data[last] = value;
       }
     }
+  } catch (error) {
+    console.error(
+      `there was an error while setting the value \`${value}\` in the path \`${path}\`\ndetail: `,
+      error
+    );
+  } finally {
+    return obj;
   }
-
-  return obj;
 }
+
+export type Paths = (
+  | [string, string]
+  | { path: string; value: { path: string; obj?: any } }
+  | { path: string; value: any }
+)[];
 
 /**
  *
  * @description sets multiple values in an object using an array of paths and values
  * @param obj any JavaScript object
  * @param paths an array of strings or objects with properties path and value
+ * @param createIfUndefined a boolean flag indicating whether to create nested objects if they don't exist
  * @returns the updated object with the new property values
  */
-export function setValuesByPaths<T = any>(obj: T, paths: [string, string][]): T;
-export function setValuesByPaths<T = any>(
+export function setValuesByPaths<T extends {}>(
   obj: T,
-  paths: { path: string; value: any }[]
-): T;
-export function setValuesByPaths<T = any>(
-  obj: T,
-  paths: { path: string; value: { path: any; obj?: any } }[]
-): T;
-export function setValuesByPaths<T = any>(
-  obj: T,
-  paths: ([string, string] | { path: string; value: any })[]
-): T;
-export function setValuesByPaths<T = any>(
-  obj: T,
-  paths: ([string, string] | { path: string; value: any })[]
+  paths: Paths,
+  createIfUndefined?: boolean
 ) {
-  paths.forEach((p) => {
-    if (p instanceof Array) {
-      setValueByPath(obj, p[0], { path: p[1] || "" });
-    } else {
-      setValueByPath(obj, p.path, p.value);
+  try {
+    for (const pathItem of paths) {
+      if (Array.isArray(pathItem)) {
+        setValueByPath(
+          obj,
+          pathItem[0],
+          { path: pathItem[1] ?? "" },
+          createIfUndefined
+        );
+      } else {
+        setValueByPath(obj, pathItem.path, pathItem.value, createIfUndefined);
+      }
     }
-  });
-
-  return obj;
+  } catch (error) {
+    console.error(
+      `there was an error while setting the values \ndetail: `,
+      error
+    );
+  } finally {
+    return obj;
+  }
 }
 
 /**
@@ -157,34 +179,41 @@ export function setValuesByPaths<T = any>(
  * @return the updated object with the property at the given path deleted
  */
 export function deleteAttributeByPath<T = any>(obj: any, path: string): T {
-  if (!(obj && path)) return obj;
+  try {
+    if (!(obj && path)) return obj;
 
-  let [first, ...rest] = path.split(".");
+    let [first, ...rest] = path.split(".");
 
-  if (rest.length) {
-    if (Array.isArray(obj[first])) {
-      if (isNaN(+rest[0])) {
-        obj[first].forEach((d: any) =>
-          deleteAttributeByPath(d, rest.join("."))
-        );
+    if (rest.length) {
+      if (Array.isArray(obj[first])) {
+        if (isNaN(+rest[0])) {
+          obj[first].forEach((d: any) =>
+            deleteAttributeByPath(d, rest.join("."))
+          );
+        } else {
+          deleteAttributeByPath(obj[first][+rest[0]], rest.slice(1).join("."));
+        }
       } else {
-        deleteAttributeByPath(obj[first][+rest[0]], rest.slice(1).join("."));
+        deleteAttributeByPath(obj[first], rest.join("."));
       }
     } else {
-      deleteAttributeByPath(obj[first], rest.join("."));
-    }
-  } else {
-    if (Array.isArray(obj)) {
-      if (isNaN(+first)) {
-        obj.forEach((item: any) => {
-          delete item[first];
-        });
+      if (Array.isArray(obj)) {
+        if (isNaN(+first)) {
+          obj.forEach((item: any) => {
+            delete item[first];
+          });
+        } else {
+          obj.splice(+first, 1);
+        }
       } else {
-        obj.splice(+first, 1);
+        delete obj[first];
       }
-    } else {
-      delete obj[first];
     }
+  } catch (error) {
+    console.error(
+      `there was an error while deleting the attribute ${path}\ndetail:`,
+      error
+    );
   }
 
   return obj;
