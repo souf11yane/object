@@ -19,8 +19,10 @@ export function accessObjectByPath(
     throw new Error(`the given path \`${path}\` is not of type string`);
   }
 
+  if (path.length == 0) return ["", obj];
+
   let pathSegments = path.split(".");
-  let last = pathSegments.splice(-1, 1)[0] ?? "";
+  let last = pathSegments.splice(-1, 1)[0];
 
   let data = obj;
 
@@ -29,7 +31,11 @@ export function accessObjectByPath(
 
     if (!(prop in data) || !data[prop]) {
       if (createIfUndefined) {
-        data[prop] = isNaN(+pathSegments[0]) ? {} : [];
+        if (isNaN(+(pathSegments[0] ?? last))) {
+          data[prop] = {};
+        } else {
+          data[prop] = [];
+        }
       } else {
         return [last, undefined];
       }
@@ -103,7 +109,11 @@ export function setValueByPath<T extends Object>(
     let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
 
     if (data && (last in data || createIfUndefined)) {
-      let objKeysLength = Object.keys(value || {}).length;
+      let objKeysLength = 0;
+
+      if (value && typeof value == "object") {
+        objKeysLength = Object.keys(value).length;
+      }
 
       if (objKeysLength > 0 && objKeysLength <= 2) {
         if (!("path" in value)) {
@@ -154,7 +164,7 @@ export function setValuesByPaths<T extends Object>(
         setValueByPath(
           obj,
           pathItem[0],
-          { path: pathItem[1] ?? "" },
+          { path: pathItem[1] },
           createIfUndefined
         );
       } else {

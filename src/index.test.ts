@@ -70,12 +70,21 @@ describe("accessObjectByPath function", () => {
     expect(data).toEqual({});
   });
 
-  // Tests that the function returns the entire object if a property in a nested path does not exist and createIfUndefined is false
+  // Tests that the function if a property in a nested path does not exist and createIfUndefined is true create the properties and sets its value to object if the property is not a number after parsing it
   it("test create nonexistent nested property", () => {
     const obj = { a: { b: 2 } };
     const [last, data] = accessObjectByPath(obj, "a.c.d", true);
     expect(last).toBe("d");
     expect(data).toEqual({});
+  });
+
+  // Tests that the function if a property in a nested path does not exist and createIfUndefined is true create the properties and sets its value to array if the property is a number after parsing it
+  it("test create nonexistent nested property", () => {
+    const obj_0 = { a: { b: 2 } };
+    const obj_d = { a: { b: 2 } };
+
+    expect(accessObjectByPath(obj_0, "a.c.0", true)).toEqual(["0", []]);
+    expect(accessObjectByPath(obj_d, "a.c.0.d", true)).toEqual(["d", {}]);
   });
 
   // Tests that the function returns an error if the path is not a string
