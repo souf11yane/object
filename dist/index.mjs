@@ -1,130 +1,184 @@
 // src/index.ts
-function getValueByPath(obj, path) {
+import cloneDeep from "lodash/cloneDeep";
+function accessObjectByPath(obj, path, createIfUndefined = false) {
+  var _a;
+  if (typeof path !== "string") {
+    throw new Error(`the given path \`${path}\` is not of type string`);
+  }
+  let pathSegments = path.split(".");
+  let last = (_a = pathSegments.splice(-1, 1)[0]) != null ? _a : "";
+  let data = obj;
+  while (pathSegments.length) {
+    const prop = pathSegments.shift();
+    if (!(prop in data) || !data[prop]) {
+      if (createIfUndefined) {
+        data[prop] = isNaN(+pathSegments[0]) ? {} : [];
+      } else {
+        return [last, void 0];
+      }
+    }
+    data = data[prop];
+  }
+  return [last, data];
+}
+function getValueByPath(obj, path, createIfUndefined = false) {
+  try {
+    let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
+    return data[last];
+  } catch (error) {
+    console.error(
+      `there was an error while getting the value of the path \`${path}\` 
+detail: `,
+      error
+    );
+    return obj;
+  }
+}
+function setValueByPath(obj, path, value, createIfUndefined = false) {
+  try {
+    let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
+    if (data && (last in data || createIfUndefined)) {
+      let objKeysLength = Object.keys(value || {}).length;
+      if (objKeysLength > 0 && objKeysLength <= 2) {
+        if (!("path" in value)) {
+          data[last] = value;
+        } else {
+          let returnedData = getValueByPath(
+            value.obj || data[last],
+            value.path
+          );
+          if (returnedData)
+            data[last] = returnedData;
+        }
+      } else {
+        data[last] = value;
+      }
+    }
+  } catch (error) {
+    console.error(
+      `there was an error while setting the value \`${value}\` in the path \`${path}\`
+detail: `,
+      error
+    );
+  } finally {
+    return obj;
+  }
+}
+function setValuesByPaths(obj, paths, createIfUndefined) {
+  var _a;
+  try {
+    for (const pathItem of paths) {
+      if (Array.isArray(pathItem)) {
+        setValueByPath(
+          obj,
+          pathItem[0],
+          { path: (_a = pathItem[1]) != null ? _a : "" },
+          createIfUndefined
+        );
+      } else {
+        setValueByPath(obj, pathItem.path, pathItem.value, createIfUndefined);
+      }
+    }
+  } catch (error) {
+    console.error(
+      `there was an error while setting the values 
+detail: `,
+      error
+    );
+  } finally {
+    return obj;
+  }
+}
+function deleteAttributeByPath(obj, path) {
   if (!obj)
     return obj;
-  let [first, ...rest] = path.split(".");
-  if (rest.length) {
-    if (obj[first] instanceof Array && isNaN(+rest[0])) {
-      return obj[first].map((d) => getValueByPath(d, rest.join(".")));
-    } else {
-      return getValueByPath(obj[first], rest.join("."));
+  try {
+    let [last, data] = accessObjectByPath(obj, path);
+    if (data && last in data) {
+      delete data[last];
     }
-  } else {
-    return obj[first];
+  } catch (error) {
+    console.error(
+      `there was an error while deleting the values 
+detail: `,
+      error
+    );
+  } finally {
+    return obj;
   }
 }
-function setValueByPath(obj, path, value = {}) {
-  var _a;
-  if (obj && typeof obj == "object" && path) {
-    let [first, ...rest] = path.split(".");
-    if (rest.length) {
-      if (obj[first] === void 0) {
-        obj[first] = isNaN(+rest[0]) ? {} : [];
-      } else {
-        if (obj[first] instanceof Array && isNaN(+rest[0])) {
-          obj[first].forEach(
-            (val) => setValueByPath(val, rest.join("."), value)
-          );
-        } else {
-          setValueByPath(obj[first], rest.join("."), value);
-        }
-      }
-    } else {
-      if (obj[first] instanceof Array) {
-        obj[first] = obj[first].map((d) => {
-          if ((value == null ? void 0 : value.value) !== void 0) {
-            return value == null ? void 0 : value.value;
-          }
-          return getValueByPath((value == null ? void 0 : value.obj) || d, (value == null ? void 0 : value.path) || "");
-        });
-      } else {
-        if ((value == null ? void 0 : value.value) != void 0) {
-          obj[first] = value == null ? void 0 : value.value;
-        } else {
-          obj[first] = (_a = getValueByPath((value == null ? void 0 : value.obj) || obj[first], (value == null ? void 0 : value.path) || "")) != null ? _a : obj[first];
-        }
-      }
-    }
+function deleteAttributesByPaths(obj, paths) {
+  if (!(obj && paths))
+    return obj;
+  for (const pathItem of paths) {
+    deleteAttributeByPath(obj, pathItem);
   }
-  return obj;
-}
-function setValuesByPaths(obj, paths) {
-  paths.forEach((p) => {
-    if (p instanceof Array) {
-      setValueByPath(obj, p[0], { path: p[1] || "" });
-    } else {
-      setValueByPath(obj, p.path, p.value);
-    }
-  });
   return obj;
 }
 function convertToFormData(data, media) {
   let formData = new FormData();
-  for (let key of Object.keys(data)) {
-    if (data[key] !== void 0) {
-      formData.set(key, JSON.stringify(data[key]));
-    }
-  }
-  if (media == null ? void 0 : media.length) {
-    media.forEach((item) => {
-      if (item.file instanceof Array) {
-        if (item.file.length) {
-          formData.delete(item.title);
-          item.file.forEach((file) => {
-            formData.append(item.title, file);
-          });
+  try {
+    if (data && typeof data === "object") {
+      for (let key of Object.keys(data)) {
+        if (data[key] !== void 0) {
+          formData.set(key, JSON.stringify(data[key]));
         }
-      } else if (item.file) {
-        formData.set(item.title, item.file);
-      }
-    });
-  }
-  return formData;
-}
-function cloneObject(obj) {
-  return !obj ? obj : JSON.parse(JSON.stringify(obj));
-}
-function updateObject(obj, val) {
-  Object.keys(val || {}).forEach((k) => {
-    obj[k] = val[k];
-  });
-}
-function updateObjectStrict(obj, val) {
-  Object.keys(val || {}).forEach((k) => {
-    if (obj.hasOwnProperty(k)) {
-      if (typeof obj[k] == "object" && !(obj[k] instanceof Array)) {
-        updateObjectStrict(obj[k], val[k]);
-      } else {
-        obj[k] = val[k];
-      }
-    }
-  });
-}
-function deleteAttributeByPath(obj, path) {
-  if (!(obj && path))
-    return obj;
-  let [first, ...rest] = path.split(".");
-  if (rest.length) {
-    if (obj[first] instanceof Array) {
-      if (isNaN(+rest[0])) {
-        obj[first].forEach(
-          (d) => deleteAttributeByPath(d, rest.join("."))
-        );
-      } else {
-        deleteAttributeByPath(obj[first][+rest[0]], rest.slice(1).join("."));
       }
     } else {
-      deleteAttributeByPath(obj[first], rest.join("."));
+      console.error("data parameter is not an object");
     }
-  } else {
-    delete obj[first];
+    if (media == null ? void 0 : media.length) {
+      media.forEach((item) => {
+        if (item.file instanceof Array) {
+          if (item.file.length) {
+            formData.delete(item.title);
+            item.file.forEach((file) => {
+              if (typeof item.title === "string") {
+                formData.append(item.title, file);
+              }
+            });
+          }
+        } else if (item.file) {
+          if (typeof item.title === "string") {
+            formData.set(item.title, item.file);
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error(
+      `there was an error while converting to formData 
+detail: `,
+      error
+    );
+  } finally {
+    return formData;
+  }
+}
+function cloneObject(obj = {}) {
+  if (typeof obj !== "object" || !obj)
+    return obj;
+  return cloneDeep(obj);
+}
+function updateObject(obj, updateValue) {
+  if (!(obj && updateValue && typeof obj == "object" && typeof updateValue == "object")) {
+    throw new Error("Invalid input parameters. Expected objects.");
+  }
+  Object.assign(obj, updateValue);
+  return obj;
+}
+function updateObjectStrict(obj, updateValue) {
+  if (!(obj && updateValue && typeof obj == "object" && typeof updateValue == "object")) {
+    throw new Error("Invalid input parameters. Expected objects.");
+  }
+  for (const key in updateValue) {
+    if (key in obj)
+      obj[key] = updateValue[key];
   }
   return obj;
 }
-function deleteAttributesByPaths(obj, paths) {
-  paths.forEach((p) => deleteAttributeByPath(obj, p));
-}
 export {
+  accessObjectByPath,
   cloneObject,
   convertToFormData,
   deleteAttributeByPath,

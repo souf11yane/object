@@ -1,35 +1,79 @@
 /**
  *
+ * @description
+ * - The function uses recursion to traverse the object and handle nested properties
+ * - It can create properties if they do not exist, but this behavior is optional and controlled by the createIfUndefined parameter
+ * @param obj any JavaScript object
+ * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
+ * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
+ * @returns An array containing the last path segment and the accessed property
+ */
+declare function accessObjectByPath(obj: any, path: string, createIfUndefined?: boolean): [string, any];
+/**
+ *
  * @description traverses the object using dot notation to get the value of a property at a given path
+ * @param obj any JavaScript object
+ * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
+ * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
  * @returns the value of the property at the given path
  */
-declare function getValueByPath(obj: any, path: string): any;
+declare function getValueByPath(obj: any, path: string, createIfUndefined?: boolean): any;
 /**
  *
  * @description traverses the object using dot notation to set the value of a property at a given path, creating nested objects or arrays as needed
+ * @param obj any JavaScript object
+ * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
+ * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
  * @returns the updated object with the new property value
  */
-declare function setValueByPath<T = any>(obj: any, path: string, value?: {
-    value?: any;
-    path?: string;
-    obj?: any;
-}): T;
+declare function setValueByPath<T extends Object>(obj: T, path: string, value: {
+    path: string;
+    obj: any;
+}, createIfUndefined: boolean): T;
+declare function setValueByPath<T extends Object>(obj: T, path: string, value: {
+    path: string;
+}, createIfUndefined?: boolean): T;
+declare function setValueByPath<T extends Object>(obj: T, path: string, value: any, createIfUndefined?: boolean): T;
+type Paths = ([string, string] | {
+    path: string;
+    value: {
+        path: string;
+        obj?: any;
+    };
+} | {
+    path: string;
+    value: any;
+})[];
 /**
  *
  * @description sets multiple values in an object using an array of paths and values
+ * @param obj any JavaScript object
+ * @param paths an array of strings or objects with properties path and value
+ * @param createIfUndefined a boolean flag indicating whether to create nested objects if they don't exist
  * @returns the updated object with the new property values
  */
-declare function setValuesByPaths<T = any>(obj: T, paths: ([string, string] | {
-    path: string;
-    value: {
-        value?: any;
-        path?: any;
-        obj?: any;
-    };
-})[]): T;
+declare function setValuesByPaths<T extends Object>(obj: T, paths: Paths, createIfUndefined?: boolean): T;
+/**
+ *
+ * @description deletes a property at a given path in an object
+ * @param obj any JavaScript object
+ * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
+ * @return the updated object with the property at the given path deleted
+ */
+declare function deleteAttributeByPath<T extends Object>(obj: T, path: string): T;
+/**
+ *
+ * @description deletes multiple properties in an object using an array of paths
+ * @param obj any JavaScript object
+ * @param paths an array of strings or objects with properties path and value
+ * @return the updated object with the properties at the given paths deleted
+ */
+declare function deleteAttributesByPaths<T extends Object>(obj: T, paths: string[]): T;
 /**
  *
  * @description converts a JavaScript object to form data, including handling media files
+ * @param data a JavaScript object to be converted to form data, used in convertToFormData function
+ * @param media an optional array of objects with properties file and title, used in convertToFormData function
  * @return a FormData object representing the JavaScript object
  */
 declare function convertToFormData(data: Record<string, any>, media?: {
@@ -39,32 +83,25 @@ declare function convertToFormData(data: Record<string, any>, media?: {
 /**
  *
  * @description creates a deep copy of a JavaScript object
+ * @param obj any JavaScript object
  * @return a deep copy of the JavaScript object
  */
-declare function cloneObject<T = any>(obj: T): T;
+declare function cloneObject<T extends Object>(obj?: T): T;
 /**
  *
  * @description updates an object with new properties and values
+ * @param obj any JavaScript object
+ * @param updateValue an object with properties to update an object
  * @return the updated object
  */
-declare function updateObject(obj: any, val: any): void;
+declare function updateObject<T extends Object>(obj: T, updateValue: Object): T;
 /**
  *
  * @description updates an object with new properties and values, only updating existing properties
+ * @param obj any JavaScript object
+ * @param updateValue an object with properties to update an object
  * @return the updated object
  */
-declare function updateObjectStrict(obj: any, val: any): void;
-/**
- *
- * @description deletes a property at a given path in an object
- * @return the updated object with the property at the given path deleted
- */
-declare function deleteAttributeByPath(obj: any, path: string): any;
-/**
- *
- * @description deletes multiple properties in an object using an array of paths
- * @return the updated object with the properties at the given paths deleted
- */
-declare function deleteAttributesByPaths(obj: any, paths: string[]): void;
+declare function updateObjectStrict<T = any>(obj: T, updateValue: Partial<T>): T & object;
 
-export { cloneObject, convertToFormData, deleteAttributeByPath, deleteAttributesByPaths, getValueByPath, setValueByPath, setValuesByPaths, updateObject, updateObjectStrict };
+export { Paths, accessObjectByPath, cloneObject, convertToFormData, deleteAttributeByPath, deleteAttributesByPaths, getValueByPath, setValueByPath, setValuesByPaths, updateObject, updateObjectStrict };

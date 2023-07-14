@@ -75,25 +75,25 @@ export function getValueByPath(
  * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
  * @returns the updated object with the new property value
  */
-export function setValueByPath<T extends {}>(
+export function setValueByPath<T extends Object>(
   obj: T,
   path: string,
   value: { path: string; obj: any },
   createIfUndefined: boolean
 ): T;
-export function setValueByPath<T extends {}>(
+export function setValueByPath<T extends Object>(
   obj: T,
   path: string,
   value: { path: string },
   createIfUndefined?: boolean
 ): T;
-export function setValueByPath<T extends {}>(
+export function setValueByPath<T extends Object>(
   obj: T,
   path: string,
   value: any,
   createIfUndefined?: boolean
 ): T;
-export function setValueByPath<T extends {}>(
+export function setValueByPath<T extends Object>(
   obj: T,
   path: string,
   value: any,
@@ -143,7 +143,7 @@ export type Paths = (
  * @param createIfUndefined a boolean flag indicating whether to create nested objects if they don't exist
  * @returns the updated object with the new property values
  */
-export function setValuesByPaths<T extends {}>(
+export function setValuesByPaths<T extends Object>(
   obj: T,
   paths: Paths,
   createIfUndefined?: boolean
@@ -178,45 +178,25 @@ export function setValuesByPaths<T extends {}>(
  * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
  * @return the updated object with the property at the given path deleted
  */
-export function deleteAttributeByPath<T = any>(obj: any, path: string): T {
+export function deleteAttributeByPath<T extends Object>(
+  obj: T,
+  path: string
+): T {
+  if (!obj) return obj;
   try {
-    if (!(obj && path)) return obj;
+    let [last, data] = accessObjectByPath(obj, path);
 
-    let [first, ...rest] = path.split(".");
-
-    if (rest.length) {
-      if (Array.isArray(obj[first])) {
-        if (isNaN(+rest[0])) {
-          obj[first].forEach((d: any) =>
-            deleteAttributeByPath(d, rest.join("."))
-          );
-        } else {
-          deleteAttributeByPath(obj[first][+rest[0]], rest.slice(1).join("."));
-        }
-      } else {
-        deleteAttributeByPath(obj[first], rest.join("."));
-      }
-    } else {
-      if (Array.isArray(obj)) {
-        if (isNaN(+first)) {
-          obj.forEach((item: any) => {
-            delete item[first];
-          });
-        } else {
-          obj.splice(+first, 1);
-        }
-      } else {
-        delete obj[first];
-      }
+    if (data && last in data) {
+      delete data[last];
     }
   } catch (error) {
     console.error(
-      `there was an error while deleting the attribute ${path}\ndetail:`,
+      `there was an error while deleting the values \ndetail: `,
       error
     );
+  } finally {
+    return obj;
   }
-
-  return obj;
 }
 
 /**
@@ -226,8 +206,14 @@ export function deleteAttributeByPath<T = any>(obj: any, path: string): T {
  * @param paths an array of strings or objects with properties path and value
  * @return the updated object with the properties at the given paths deleted
  */
-export function deleteAttributesByPaths<T = any>(obj: T, paths: string[]) {
-  paths.forEach((p) => deleteAttributeByPath(obj, p));
+export function deleteAttributesByPaths<T extends Object>(
+  obj: T,
+  paths: string[]
+) {
+  if (!(obj && paths)) return obj;
+  for (const pathItem of paths) {
+    deleteAttributeByPath(obj, pathItem);
+  }
   return obj;
 }
 
@@ -244,29 +230,44 @@ export function convertToFormData(
 ): FormData {
   let formData = new FormData();
 
-  for (let key of Object.keys(data)) {
-    if (data[key] !== undefined) {
-      formData.set(key, JSON.stringify(data[key]));
-    }
-  }
-
-  if (media?.length) {
-    media.forEach((item) => {
-      if (item.file instanceof Array) {
-        if (item.file.length) {
-          formData.delete(item.title);
-
-          item.file.forEach((file) => {
-            formData.append(item.title, file);
-          });
+  try {
+    if (data && typeof data === "object") {
+      for (let key of Object.keys(data)) {
+        if (data[key] !== undefined) {
+          formData.set(key, JSON.stringify(data[key]));
         }
-      } else if (item.file) {
-        formData.set(item.title, item.file);
       }
-    });
+    } else {
+      console.error("data parameter is not an object");
+    }
+
+    if (media?.length) {
+      media.forEach((item) => {
+        if (item.file instanceof Array) {
+          if (item.file.length) {
+            formData.delete(item.title);
+
+            item.file.forEach((file) => {
+              if (typeof item.title === "string") {
+                formData.append(item.title, file);
+              }
+            });
+          }
+        } else if (item.file) {
+          if (typeof item.title === "string") {
+            formData.set(item.title, item.file);
+          }
+        }
+      });
+    }
+  } catch (error) {
+    console.error(
+      `there was an error while converting to formData \ndetail: `,
+      error
+    );
+  } finally {
+    return formData;
   }
-
-  return formData;
 }
 
 /**
@@ -275,17 +276,8 @@ export function convertToFormData(
  * @param obj any JavaScript object
  * @return a deep copy of the JavaScript object
  */
-export function simpleCloneObject<T = any>(obj: T): T {
-  return !obj ? obj : JSON.parse(JSON.stringify(obj));
-}
-
-/**
- *
- * @description creates a deep copy of a JavaScript object
- * @param obj any JavaScript object
- * @return a deep copy of the JavaScript object
- */
-export function cloneObjectDeep<T = any>(obj: T): T {
+export function cloneObject<T extends Object>(obj: T = {} as T) {
+  if (typeof obj !== "object" || !obj) return obj;
   return cloneDeep(obj);
 }
 
@@ -296,10 +288,21 @@ export function cloneObjectDeep<T = any>(obj: T): T {
  * @param updateValue an object with properties to update an object
  * @return the updated object
  */
-export function updateObject(obj: any, updateValue: any) {
-  Object.keys(updateValue || {}).forEach((k) => {
-    obj[k] = updateValue[k];
-  });
+export function updateObject<T extends Object>(obj: T, updateValue: Object) {
+  if (
+    !(
+      obj &&
+      updateValue &&
+      typeof obj == "object" &&
+      typeof updateValue == "object"
+    )
+  ) {
+    throw new Error("Invalid input parameters. Expected objects.");
+  }
+
+  Object.assign(obj, updateValue);
+
+  return obj;
 }
 
 /**
@@ -309,15 +312,22 @@ export function updateObject(obj: any, updateValue: any) {
  * @param updateValue an object with properties to update an object
  * @return the updated object
  */
-export function updateObjectStrict(obj: any, updateValue: any) {
-  let objKeys = Object.keys(obj || {});
-  Object.keys(updateValue || {})
-    .filter((key) => objKeys.includes(key))
-    .forEach((k) => {
-      if (typeof obj[k] == "object" && !(obj[k] instanceof Array)) {
-        updateObjectStrict(obj[k], updateValue[k]);
-      } else {
-        obj[k] = updateValue[k];
-      }
-    });
+export function updateObjectStrict<T = any>(obj: T, updateValue: Partial<T>) {
+  if (
+    !(
+      obj &&
+      updateValue &&
+      typeof obj == "object" &&
+      typeof updateValue == "object"
+    )
+  ) {
+    throw new Error("Invalid input parameters. Expected objects.");
+  }
+
+  for (const key in updateValue) {
+    // @ts-ignore
+    if (key in obj) obj[key] = updateValue[key];
+  }
+
+  return obj;
 }
