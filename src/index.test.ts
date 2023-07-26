@@ -156,6 +156,80 @@ describe("getValueByPath function", () => {
     expect(getValueByPath(obj, path)).toEqual(1);
   });
 
+  // Tests that the function returns array of values if the last path is not a number
+  it("test array of objects with the last path is not a number", () => {
+    const obj = {
+      testArray: [
+        {
+          id: 1,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 2,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 3,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 4,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 5,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+      ],
+    };
+    const path = "testArray.id";
+    expect(getValueByPath(obj, path)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  // Tests that the function returns object if the last path is a number
+  it("test array of objects with the last path is a number", () => {
+    const obj = {
+      testArray: [
+        {
+          id: 1,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 2,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 3,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 4,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 5,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+      ],
+    };
+    const path = "testArray.3";
+    expect(getValueByPath(obj, path)).toEqual({
+      id: 4,
+      name: "test name 1",
+      other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+    });
+  });
+
   // Tests that the function returns the correct value for a nested path
   it("test nested path", () => {
     const obj = { a: { b: { c: 1 } } };
@@ -388,6 +462,73 @@ describe("setValueByPath function", () => {
     setValueByPath(obj, "a.b.c", 2);
     expect(obj).toEqual({ a: { b: { c: 2 } } });
   });
+  // Tests that setValueByPath sets a value at the specified path in a nested object
+  it("test set value nested object", () => {
+    const obj = {
+      testArray: [
+        {
+          id: 1,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 2,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 3,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 4,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+        {
+          id: 5,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+        },
+      ],
+    };
+    setValueByPath(obj, "testArray.number", 10, true);
+    expect(obj).toEqual({
+      testArray: [
+        {
+          id: 1,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+          number: 10,
+        },
+        {
+          id: 2,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+          number: 10,
+        },
+        {
+          id: 3,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+          number: 10,
+        },
+        {
+          id: 4,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+          number: 10,
+        },
+        {
+          id: 5,
+          name: "test name 1",
+          other: ["test 1", "test 2", "test 3", "test 4", "test 5"],
+          number: 10,
+        },
+      ],
+    });
+  });
 
   // Tests that setValueByPath sets a value at the specified path in an array
   it("test set value array", () => {
@@ -546,13 +687,23 @@ describe("setValueByPath function", () => {
 describe("setValuesByPaths function", () => {
   // Tests that setValuesByPaths sets values on object for each path in paths array
   it("test happy path set values on object for each path in paths array", () => {
-    const obj = { a: { b: { c: 1 } } };
+    const obj = {
+      a: { b: { c: 1 }, s: { h: [{ a: 1 }, { a: 2 }, { a: 3 }] } },
+    };
     const paths: Paths = [
       ["a.b.c", "2"],
       { path: "a.b.d", value: 3 },
       { path: "a.b.e.f", value: 4 },
+      { path: "a.g", value: { path: "a.s.h.a", obj } },
+      ["a.s", "h.a"],
     ];
-    const expected = { a: { b: { c: 1, d: 3, e: { f: 4 } } } };
+    const expected = {
+      a: {
+        b: { c: 1, d: 3, e: { f: 4 } },
+        s: [1, 2, 3],
+        g: [1, 2, 3],
+      },
+    };
 
     const result = setValuesByPaths(obj, paths, true);
 
