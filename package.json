@@ -1,6 +1,6 @@
 {
   "name": "@sf-helpers/object",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "The code snippet provides utility functions for manipulating and transforming JavaScript objects, including getting and setting values by path, converting objects to form data, cloning objects, updating objects, and deleting attributes by path.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
