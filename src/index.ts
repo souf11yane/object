@@ -63,7 +63,11 @@ export function getValueByPath(
   try {
     let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
 
-    return data[last];
+    if (Array.isArray(data) && isNaN(+last)) {
+      return data.map((item) => item[last]);
+    } else {
+      return data[last];
+    }
   } catch (error) {
     console.error(
       `there was an error while getting the value of the path \`${path}\` \ndetail: `,
@@ -108,26 +112,39 @@ export function setValueByPath<T extends Object>(
   try {
     let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
 
+    if (!createIfUndefined && !(last in data)) {
+      return obj;
+    }
+
     if (data && (last in data || createIfUndefined)) {
-      let objKeysLength = 0;
+      if (Array.isArray(data) && isNaN(+last)) {
+        data.forEach((item) => {
+          let returnedData = value.path
+            ? getValueByPath(value.obj || item[last], value.path)
+            : value;
 
-      if (value && typeof value == "object") {
-        objKeysLength = Object.keys(value).length;
-      }
-
-      if (objKeysLength > 0 && objKeysLength <= 2) {
-        if (!("path" in value)) {
-          data[last] = value;
-        } else {
-          let returnedData = getValueByPath(
-            value.obj || data[last],
-            value.path
-          );
-          if (returnedData) data[last] = returnedData;
-        }
+          if (returnedData !== undefined) item[last] = returnedData;
+        });
       } else {
-        data[last] = value;
+        let returnedData = value.path
+          ? getValueByPath(value.obj || data[last], value.path)
+          : value;
+
+        if (returnedData !== undefined) data[last] = returnedData;
       }
+
+      // if (value.path) {
+      //   let returnedData = getValueByPath(value.obj || data[last], value.path);
+      //   if (returnedData !== undefined) {
+      //     if (Array.isArray(data) && isNaN(+last)) {
+      //       data.splice(0, data.length - 1, ...data.map((item) => item[last]));
+      //     } else {
+      //       data[last] = returnedData;
+      //     }
+      //   }
+      // } else {
+      //   data[last] = value;
+      // }
     }
   } catch (error) {
     console.error(
