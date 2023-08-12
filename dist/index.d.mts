@@ -11,7 +11,7 @@
 declare function accessObjectByPath(obj: any, path: string, createIfUndefined?: boolean): [string, any];
 /**
  *
- * @description traverses the object using dot notation to get the value of a property at a given path
+ * traverses the object using dot notation to get the value of a property at a given path
  * @param obj any JavaScript object
  * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
  * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
@@ -20,7 +20,7 @@ declare function accessObjectByPath(obj: any, path: string, createIfUndefined?: 
 declare function getValueByPath(obj: any, path: string, createIfUndefined?: boolean): any;
 /**
  *
- * @description traverses the object using dot notation to set the value of a property at a given path, creating nested objects or arrays as needed
+ * traverses the object using dot notation to set the value of a property at a given path, creating nested objects or arrays as needed
  * @param obj any JavaScript object
  * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
  * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
@@ -46,7 +46,7 @@ type Paths = ([string, string] | {
 })[];
 /**
  *
- * @description sets multiple values in an object using an array of paths and values
+ * sets multiple values in an object using an array of paths and values
  * @param obj any JavaScript object
  * @param paths an array of strings or objects with properties path and value
  * @param createIfUndefined a boolean flag indicating whether to create nested objects if they don't exist
@@ -55,7 +55,7 @@ type Paths = ([string, string] | {
 declare function setValuesByPaths<T extends Object>(obj: T, paths: Paths, createIfUndefined?: boolean): T;
 /**
  *
- * @description deletes a property at a given path in an object
+ * deletes a property at a given path in an object
  * @param obj any JavaScript object
  * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
  * @return the updated object with the property at the given path deleted
@@ -63,7 +63,7 @@ declare function setValuesByPaths<T extends Object>(obj: T, paths: Paths, create
 declare function deleteAttributeByPath<T extends Object>(obj: T, path: string): T;
 /**
  *
- * @description deletes multiple properties in an object using an array of paths
+ * deletes multiple properties in an object using an array of paths
  * @param obj any JavaScript object
  * @param paths an array of strings or objects with properties path and value
  * @return the updated object with the properties at the given paths deleted
@@ -71,7 +71,7 @@ declare function deleteAttributeByPath<T extends Object>(obj: T, path: string): 
 declare function deleteAttributesByPaths<T extends Object>(obj: T, paths: string[]): T;
 /**
  *
- * @description converts a JavaScript object to form data, including handling media files
+ * converts a JavaScript object to form data, including handling media files
  * @param data a JavaScript object to be converted to form data, used in convertToFormData function
  * @param media an optional array of objects with properties file and title, used in convertToFormData function
  * @return a FormData object representing the JavaScript object
@@ -82,14 +82,15 @@ declare function convertToFormData(data: Record<string, any>, media?: {
 }[]): FormData;
 /**
  *
- * @description creates a deep copy of a JavaScript object
+ * a recursive function that creates a deep copy of a JavaScript object. It takes an object obj as input and an optional parameter ignoreUnaccessibleFields which determines whether to ignore unaccessible fields (default is false)
  * @param obj any JavaScript object
+ * @param [ignoreUnaccessibleFields=false]
  * @return a deep copy of the JavaScript object
  */
-declare function cloneObject<T extends Object>(obj?: T): T;
+declare function cloneObject<T extends Object>(obj: T, ignoreUnaccessibleFields?: boolean): T;
 /**
  *
- * @description updates an object with new properties and values
+ * updates an object with new properties and values
  * @param obj any JavaScript object
  * @param updateValue an object with properties to update an object
  * @return the updated object
@@ -97,7 +98,7 @@ declare function cloneObject<T extends Object>(obj?: T): T;
 declare function updateObject<T extends Object>(obj: T, updateValue: Object): T;
 /**
  *
- * @description updates an object with new properties and values, only updating existing properties
+ * updates an object with new properties and values, only updating existing properties
  * @param obj any JavaScript object
  * @param updateValue an object with properties to update an object
  * @return the updated object

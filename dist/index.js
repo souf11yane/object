@@ -1,10 +1,25 @@
 "use strict";
-var __create = Object.create;
 var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp.call(b, prop))
+      __defNormalProp(a, prop, b[prop]);
+  if (__getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(b)) {
+      if (__propIsEnum.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    }
+  return a;
+};
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
 var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
@@ -17,14 +32,6 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/index.ts
@@ -42,20 +49,25 @@ __export(src_exports, {
   updateObjectStrict: () => updateObjectStrict
 });
 module.exports = __toCommonJS(src_exports);
-var import_cloneDeep = __toESM(require("lodash/cloneDeep"));
 function accessObjectByPath(obj, path, createIfUndefined = false) {
   var _a;
   if (typeof path !== "string") {
     throw new Error(`the given path \`${path}\` is not of type string`);
   }
+  if (path.length == 0)
+    return ["", obj];
   let pathSegments = path.split(".");
-  let last = (_a = pathSegments.splice(-1, 1)[0]) != null ? _a : "";
+  let last = pathSegments.splice(-1, 1)[0];
   let data = obj;
   while (pathSegments.length) {
     const prop = pathSegments.shift();
     if (!(prop in data) || !data[prop]) {
       if (createIfUndefined) {
-        data[prop] = isNaN(+pathSegments[0]) ? {} : [];
+        if (isNaN(+((_a = pathSegments[0]) != null ? _a : last))) {
+          data[prop] = {};
+        } else {
+          data[prop] = [];
+        }
       } else {
         return [last, void 0];
       }
@@ -67,7 +79,11 @@ function accessObjectByPath(obj, path, createIfUndefined = false) {
 function getValueByPath(obj, path, createIfUndefined = false) {
   try {
     let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
-    return data[last];
+    if (Array.isArray(data) && isNaN(+last)) {
+      return data.map((item) => item[last]);
+    } else {
+      return data[last];
+    }
   } catch (error) {
     console.error(
       `there was an error while getting the value of the path \`${path}\` 
@@ -80,21 +96,20 @@ detail: `,
 function setValueByPath(obj, path, value, createIfUndefined = false) {
   try {
     let [last, data] = accessObjectByPath(obj, path, createIfUndefined);
+    if (!createIfUndefined && !(last in data)) {
+      return obj;
+    }
     if (data && (last in data || createIfUndefined)) {
-      let objKeysLength = Object.keys(value || {}).length;
-      if (objKeysLength > 0 && objKeysLength <= 2) {
-        if (!("path" in value)) {
-          data[last] = value;
-        } else {
-          let returnedData = getValueByPath(
-            value.obj || data[last],
-            value.path
-          );
-          if (returnedData)
-            data[last] = returnedData;
-        }
+      if (Array.isArray(data) && isNaN(+last)) {
+        data.forEach((item) => {
+          let returnedData = value.path ? getValueByPath(value.obj || item[last], value.path) : value;
+          if (returnedData !== void 0)
+            item[last] = returnedData;
+        });
       } else {
-        data[last] = value;
+        let returnedData = value.path ? getValueByPath(value.obj || data[last], value.path) : value;
+        if (returnedData !== void 0)
+          data[last] = returnedData;
       }
     }
   } catch (error) {
@@ -108,14 +123,13 @@ detail: `,
   }
 }
 function setValuesByPaths(obj, paths, createIfUndefined) {
-  var _a;
   try {
     for (const pathItem of paths) {
       if (Array.isArray(pathItem)) {
         setValueByPath(
           obj,
           pathItem[0],
-          { path: (_a = pathItem[1]) != null ? _a : "" },
+          { path: pathItem[1] },
           createIfUndefined
         );
       } else {
@@ -198,10 +212,63 @@ detail: `,
     return formData;
   }
 }
-function cloneObject(obj = {}) {
-  if (typeof obj !== "object" || !obj)
-    return obj;
-  return (0, import_cloneDeep.default)(obj);
+function cloneObject(obj, ignoreUnaccessibleFields = false) {
+  const clonedObjects = /* @__PURE__ */ new WeakMap();
+  const deepCloneRecF = (obj2) => {
+    if (obj2 === void 0 || obj2 === null || !["object", "symbol"].includes(typeof obj2)) {
+      return obj2;
+    }
+    if (typeof obj2 === "symbol")
+      return Symbol(obj2.description);
+    if (obj2 instanceof Date)
+      return new Date(obj2.getTime());
+    if (obj2 instanceof RegExp)
+      return new RegExp(obj2);
+    if (obj2 instanceof Map) {
+      const newMap = /* @__PURE__ */ new Map();
+      obj2.forEach((value, key) => {
+        newMap.set(deepCloneRecF(key), deepCloneRecF(value));
+      });
+      return newMap;
+    }
+    if (obj2 instanceof Set) {
+      const newSet = /* @__PURE__ */ new Set();
+      obj2.forEach((value) => {
+        newSet.add(deepCloneRecF(value));
+      });
+      return newSet;
+    }
+    if (obj2 instanceof ArrayBuffer)
+      return obj2.slice(0);
+    if (obj2 instanceof DataView)
+      return new DataView(obj2.buffer.slice(0));
+    if (Array.isArray(obj2) || obj2 instanceof Int8Array || obj2 instanceof Int16Array || obj2 instanceof Int32Array || obj2 instanceof Uint8Array || obj2 instanceof Uint8ClampedArray || obj2 instanceof Uint16Array || obj2 instanceof Uint32Array || obj2 instanceof Float32Array || obj2 instanceof Float64Array || obj2 instanceof BigInt64Array || obj2 instanceof BigUint64Array) {
+      const length = obj2.length;
+      const newArray = new obj2.constructor(length);
+      clonedObjects.set(obj2, newArray);
+      for (let i = 0; i < length; i++) {
+        newArray[i] = deepCloneRecF(obj2[i]);
+      }
+      return newArray;
+    }
+    if (clonedObjects.has(obj2))
+      return clonedObjects.get(obj2);
+    const newObj = {};
+    clonedObjects.set(obj2, newObj);
+    if (!ignoreUnaccessibleFields) {
+      let descriptor = Object.getOwnPropertyDescriptors(obj2);
+      for (let key in descriptor) {
+        Object.defineProperty(newObj, key, __spreadProps(__spreadValues({}, descriptor[key]), {
+          value: deepCloneRecF(obj2[key])
+        }));
+      }
+      return newObj;
+    }
+    for (let key in obj2)
+      newObj[key] = deepCloneRecF(obj2[key]);
+    return newObj;
+  };
+  return deepCloneRecF(obj);
 }
 function updateObject(obj, updateValue) {
   if (!(obj && updateValue && typeof obj == "object" && typeof updateValue == "object")) {

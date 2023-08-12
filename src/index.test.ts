@@ -462,6 +462,13 @@ describe("setValueByPath function", () => {
     setValueByPath(obj, "a.b.c", 2);
     expect(obj).toEqual({ a: { b: { c: 2 } } });
   });
+
+  it("test set value nested object", () => {
+    const obj = { a: { b: { c: 1 } } };
+    setValueByPath(obj, 7686, 2);
+    expect(obj).toBe(obj);
+  });
+
   // Tests that setValueByPath sets a value at the specified path in a nested object
   it("test set value nested object", () => {
     const obj = {
@@ -1306,7 +1313,7 @@ describe("convertToFormData function", () => {
   });
 });
 
-describe("cloneObjectDeeply function", () => {
+describe("cloneObject", () => {
   // Tests that the function can clone a simple object
   it("test simple object", () => {
     const obj = { a: 1, b: "hello", c: true };
@@ -1359,8 +1366,263 @@ describe("cloneObjectDeeply function", () => {
   it("test functions symbols bigint values", () => {
     const obj = { a: () => {}, b: Symbol("hello"), c: BigInt(123) };
     const clonedObj = cloneObject(obj);
-    expect(clonedObj).toEqual(obj);
+    expect(clonedObj.a).toEqual(obj.a);
+    expect(typeof clonedObj.b).toEqual(typeof obj.b);
+    expect(clonedObj.b.description).toEqual(obj.b.description);
+    expect(clonedObj.c).toEqual(obj.c);
     expect(clonedObj).not.toBe(obj);
+  });
+
+  // Tests that a primitive value is returned as is
+  it("should return the same value when given a primitive value", () => {
+    const input = 42;
+    const output = cloneObject(input);
+    expect(output).toBe(input);
+  });
+
+  // Tests that a new object with the same properties is returned
+  it("should return a new object with the same properties", () => {
+    const input = { a: 1, b: "hello" };
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that a new array with the same elements is returned
+  it("should return a new array with the same elements", () => {
+    const input = [1, "hello", { a: 2 }];
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that a new Map with the same key-value pairs is returned
+  it("should return a new Map with the same key-value pairs", () => {
+    const input = new Map([
+      ["a", 1],
+      ["b", "hello"],
+      [{}, { a: 2 }],
+    ]);
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that a new Set with the same values is returned
+  it("should return a new Set with the same values", () => {
+    const input = new Set([1, "hello", { a: 2 }]);
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests an edge case where an object has circular reference
+  it("should handle circular references", () => {
+    const input: any = { a: 1 };
+    input.b = input;
+    const output = cloneObject(input);
+    expect(output.a).toBe(1);
+    expect(output.b).toBe(output);
+  });
+
+  // Tests that cloneObject returns a new Date object with the same time when cloning a Date
+  it("should return a new Date object with the same time when cloning a Date", () => {
+    const input = new Date();
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that a new RegExp object with the same pattern is returned when cloning a RegExp
+  it("should return a new RegExp object with the same pattern when cloning a RegExp", () => {
+    const input = /test/gi;
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that a new Symbol have the same description of the cloned one
+  it("should return a new Symbol with the same description when cloning a Symbole", () => {
+    const input = Symbol("unique");
+    const output = cloneObject(input);
+    expect(output.description).toEqual(input.description);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that cloneObject returns undefined when cloning undefined
+  it("should return undefined when cloning undefined", () => {
+    const input = undefined;
+    const output = cloneObject(input);
+    expect(output).toBeUndefined();
+  });
+
+  // Tests that cloneObject returns a new object with the same properties when cloning an object with null prototype
+  it("should return a new object with the same properties when cloning an object with null prototype", () => {
+    const input = Object.create(null);
+    input.prop1 = "value1";
+    input.prop2 = "value2";
+
+    console.log("🚀 ~ file: cloneObject.spec.ts:83 ~ it ~ input:", input);
+
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that cloneObject returns a new object with the same properties when cloning an object with non-enumerable properties
+  it("should return a new object with the same properties when cloning an object with non-enumerable properties", () => {
+    const input = Object.defineProperty({}, "prop", {
+      value: "value",
+      enumerable: false,
+    });
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that cloneObject returns a new object with the same properties when cloning an object with inherited properties
+  it("should return a new object with the same properties when cloning an object with inherited properties", () => {
+    class Parent {
+      parentProp = "parentProp";
+    }
+    class Child extends Parent {
+      childProp = "childProp";
+    }
+    const input = new Child();
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that cloneObject returns a new object with the same properties when cloning an object with non-serializable properties
+  it("should return a new object with the same properties when cloning an object with non-serializable properties", () => {
+    const input = { a: 1, b: () => {} };
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+  });
+
+  // Tests that cloneObject returns a new object with the same properties when cloning an object with non-writable properties
+  it("should return a new object with the same properties when cloning an object with non-writable properties", () => {
+    const input = Object.defineProperty({}, "prop", {
+      value: "value",
+      writable: false,
+    });
+    const output = cloneObject(input);
+    expect(output).toEqual(input);
+    expect(output).not.toBe(input);
+    expect(Object.getOwnPropertyDescriptor(output, "prop")).toEqual(
+      Object.getOwnPropertyDescriptor(input, "prop")
+    );
+    expect(Object.getOwnPropertyDescriptor(output, "prop")).not.toBe(
+      Object.getOwnPropertyDescriptor(input, "prop")
+    );
+  });
+
+  // Tests that cloneObject clones an object with primitive values and null as is
+  it("should clone an object with primitive values and null as is", () => {
+    const obj = { a: 1, b: "hello", c: null };
+    const clonedObj = cloneObject(obj);
+    expect(clonedObj).toEqual(obj);
+  });
+
+  // Tests that cloneObject clones an object with symbols
+  it("should clone an object with symbols", () => {
+    const obj = Symbol("hello world");
+    const clonedObj = cloneObject(obj);
+
+    expect(clonedObj.description).toEqual(obj.description);
+  });
+
+  // Tests that cloneObject clones an object with Date, RegExp, Map, Set, ArrayBuffer, and typed arrays instances
+  it("should clone an object with Date, RegExp, Map, Set, ArrayBuffer, and typed arrays instances", () => {
+    const obj = {
+      a: new Date(),
+      b: /hello/,
+      c: new Map([
+        [1, "one"],
+        [2, "two"],
+      ]),
+      d: new Set([1, 2, 3]),
+      e: new ArrayBuffer(8),
+      f: new Int8Array([1, 2, 3]),
+      g: new Int16Array([1, 2, 3]),
+      h: new Int32Array([1, 2, 3]),
+      i: new Uint8Array([1, 2, 3]),
+      j: new Uint8ClampedArray([1, 2, 3]),
+      k: new Uint16Array([1, 2, 3]),
+      l: new Uint32Array([1, 2, 3]),
+      m: new Float32Array([1.1, 2.2, 3.3]),
+      n: new Float64Array([1.1, 2.2, 3.3]),
+      o: new BigInt64Array([1n, 2n, 3n]),
+      p: new BigUint64Array([1n, 2n, 3n]),
+    };
+    const clonedObj = cloneObject(obj);
+    expect(clonedObj).toEqual(obj);
+  });
+
+  // Tests that cloneObject clones an object with nested objects and arrays
+  it("should clone an object with nested objects and arrays", () => {
+    const obj = {
+      a: {
+        b: {
+          c: [1, 2, { d: "hello" }],
+        },
+      },
+    };
+    const clonedObj = cloneObject(obj);
+    expect(clonedObj).toEqual(obj);
+  });
+
+  // Tests that cloneObject clones an object with unaccessible fields when ignoreUnaccessibleFields is true and when it is false
+  it("should clone an object with unaccessible fields when ignoreUnaccessibleFields is false", () => {
+    const obj = {};
+    Object.defineProperty(obj, "a", {
+      value: 1,
+      writable: false,
+    });
+    const clonedObj = cloneObject(obj);
+    expect(clonedObj).toEqual(obj);
+  });
+
+  it("should not clone an object with unaccessible fields when ignoreUnaccessibleFields is true", () => {
+    const obj = {};
+    Object.defineProperty(obj, "a", {
+      value: 1,
+      writable: false,
+    });
+    const clonedObj = cloneObject(obj, true);
+    expect(clonedObj).toEqual({});
+  });
+
+  // Tests that cloneObject clones an object with BigInt, DataView, and all typed arrays instances
+  it("should clone an object with BigInt, DataView, and all typed arrays instances", () => {
+    const obj = {
+      a: BigInt(123),
+      b: new DataView(new ArrayBuffer(8)),
+      c: new Int8Array([1, 2, 3]),
+      d: new Int16Array([1, 2, 3]),
+      e: new Int32Array([1, 2, 3]),
+      f: new Uint8Array([1, 2, 3]),
+      g: new Uint8ClampedArray([1, 2, 3]),
+      h: new Uint16Array([1, 2, 3]),
+      i: new Uint32Array([1, 2, 3]),
+      j: new Float32Array([1.1, 2.2, 3.3]),
+      k: new Float64Array([1.1, 2.2, 3.3]),
+      l: new BigInt64Array([1n, 2n, 3n]),
+      m: new BigUint64Array([1n, 2n, 3n]),
+    };
+    const clonedObj = cloneObject(obj);
+    expect(clonedObj).toEqual(obj);
+  });
+
+  // Tests that an object with circular references is cloned correctly
+  it("should clone an object with circular references", () => {
+    const obj = { a: 1 };
+    obj.b = obj;
+    const clonedObj = cloneObject(obj);
+    expect(clonedObj).toEqual(obj);
+    expect(clonedObj.b).toBe(clonedObj);
   });
 });
 

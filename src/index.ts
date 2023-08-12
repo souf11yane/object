@@ -1,5 +1,3 @@
-import cloneDeep from "lodash/cloneDeep";
-
 /**
  *
  * @description
@@ -49,7 +47,7 @@ export function accessObjectByPath(
 
 /**
  *
- * @description traverses the object using dot notation to get the value of a property at a given path
+ * traverses the object using dot notation to get the value of a property at a given path
  * @param obj any JavaScript object
  * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
  * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
@@ -79,7 +77,7 @@ export function getValueByPath(
 
 /**
  *
- * @description traverses the object using dot notation to set the value of a property at a given path, creating nested objects or arrays as needed
+ * traverses the object using dot notation to set the value of a property at a given path, creating nested objects or arrays as needed
  * @param obj any JavaScript object
  * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
  * @param createIfUndefined a boolean indicating whether to create the property if it does not exist (default is false)
@@ -164,7 +162,7 @@ export type Paths = (
 
 /**
  *
- * @description sets multiple values in an object using an array of paths and values
+ * sets multiple values in an object using an array of paths and values
  * @param obj any JavaScript object
  * @param paths an array of strings or objects with properties path and value
  * @param createIfUndefined a boolean flag indicating whether to create nested objects if they don't exist
@@ -200,7 +198,7 @@ export function setValuesByPaths<T extends Object>(
 
 /**
  *
- * @description deletes a property at a given path in an object
+ * deletes a property at a given path in an object
  * @param obj any JavaScript object
  * @param path a string representing a path to a property in the object, using dot notation to traverse nested properties
  * @return the updated object with the property at the given path deleted
@@ -228,7 +226,7 @@ export function deleteAttributeByPath<T extends Object>(
 
 /**
  *
- * @description deletes multiple properties in an object using an array of paths
+ * deletes multiple properties in an object using an array of paths
  * @param obj any JavaScript object
  * @param paths an array of strings or objects with properties path and value
  * @return the updated object with the properties at the given paths deleted
@@ -246,7 +244,7 @@ export function deleteAttributesByPaths<T extends Object>(
 
 /**
  *
- * @description converts a JavaScript object to form data, including handling media files
+ * converts a JavaScript object to form data, including handling media files
  * @param data a JavaScript object to be converted to form data, used in convertToFormData function
  * @param media an optional array of objects with properties file and title, used in convertToFormData function
  * @return a FormData object representing the JavaScript object
@@ -299,18 +297,104 @@ export function convertToFormData(
 
 /**
  *
- * @description creates a deep copy of a JavaScript object
+ * a recursive function that creates a deep copy of a JavaScript object. It takes an object obj as input and an optional parameter ignoreUnaccessibleFields which determines whether to ignore unaccessible fields (default is false)
  * @param obj any JavaScript object
+ * @param [ignoreUnaccessibleFields=false]
  * @return a deep copy of the JavaScript object
  */
-export function cloneObject<T extends Object>(obj: T = {} as T) {
-  if (typeof obj !== "object" || !obj) return obj;
-  return cloneDeep(obj);
+export function cloneObject<T extends Object>(
+  obj: T,
+  ignoreUnaccessibleFields = false
+): T {
+  const clonedObjects = new WeakMap();
+  const CloneRec = (obj: any) => {
+    if (
+      obj === undefined ||
+      obj === null ||
+      !["object", "symbol"].includes(typeof obj)
+    ) {
+      return obj; // Return primitive values and null as is
+    }
+
+    if (typeof obj === "symbol") return Symbol(obj.description); // return new Symbol
+
+    // Handle special object types
+    if (obj instanceof Date) return new Date(obj.getTime());
+
+    if (obj instanceof RegExp) return new RegExp(obj);
+
+    if (obj instanceof Map) {
+      const newMap: any = new Map();
+      obj.forEach((value, key) => {
+        newMap.set(CloneRec(key), CloneRec(value));
+      });
+      return newMap;
+    }
+
+    if (obj instanceof Set) {
+      const newSet: any = new Set();
+      obj.forEach((value) => {
+        newSet.add(CloneRec(value));
+      });
+      return newSet;
+    }
+
+    if (obj instanceof ArrayBuffer) return obj.slice(0);
+
+    if (obj instanceof DataView) return new DataView(obj.buffer.slice(0));
+
+    if (
+      Array.isArray(obj) ||
+      obj instanceof Int8Array ||
+      obj instanceof Int16Array ||
+      obj instanceof Int32Array ||
+      obj instanceof Uint8Array ||
+      obj instanceof Uint8ClampedArray ||
+      obj instanceof Uint16Array ||
+      obj instanceof Uint32Array ||
+      obj instanceof Float32Array ||
+      obj instanceof Float64Array ||
+      obj instanceof BigInt64Array ||
+      obj instanceof BigUint64Array
+    ) {
+      const length = obj.length;
+      const newArray: any = new (<any>obj).constructor(length);
+      clonedObjects.set(obj, newArray);
+      for (let i = 0; i < length; i++) {
+        newArray[i] = CloneRec(obj[i]);
+      }
+      return newArray;
+    }
+
+    if (clonedObjects.has(obj)) return clonedObjects.get(obj);
+
+    const newObj: any = {};
+    clonedObjects.set(obj, newObj);
+
+    if (!ignoreUnaccessibleFields) {
+      let descriptor = Object.getOwnPropertyDescriptors(obj);
+
+      for (let key in descriptor) {
+        Object.defineProperty(newObj, key, {
+          ...descriptor[key],
+          value: CloneRec((<any>obj)[key]),
+        });
+      }
+
+      return newObj;
+    }
+
+    for (let key in obj) newObj[key] = CloneRec(obj[key]);
+
+    return newObj;
+  };
+
+  return CloneRec(obj);
 }
 
 /**
  *
- * @description updates an object with new properties and values
+ * updates an object with new properties and values
  * @param obj any JavaScript object
  * @param updateValue an object with properties to update an object
  * @return the updated object
@@ -334,7 +418,7 @@ export function updateObject<T extends Object>(obj: T, updateValue: Object) {
 
 /**
  *
- * @description updates an object with new properties and values, only updating existing properties
+ * updates an object with new properties and values, only updating existing properties
  * @param obj any JavaScript object
  * @param updateValue an object with properties to update an object
  * @return the updated object
